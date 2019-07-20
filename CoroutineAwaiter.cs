@@ -1,24 +1,23 @@
 ﻿using System.Collections;
 using UnityEngine;
 using System.Threading.Tasks;
+using System.Reflection;
 
 public static class CoroutineAwaiter
 {
-    /// <summary>
     /// Wraps a coroutines in a task and awaits for it to finish or fail.
     /// Should be avoided for coroutines that might get instantiated twice at the same time.
     /// </summary>
-    /// <summary>
     public static async Task ExecuteCoroutineAsync(this MonoBehaviour monoBehavior, IEnumerator coroutine)
     {
         // Execute manually until routine finishes
         while (coroutine.MoveNext())
         {
-            // Only if a yield instruction pass to unity to handle it
-            if (coroutine.Current.GetType().IsSubclassOf(typeof(YieldInstruction)))
-            {
-                await monoBehavior.ExecuteYieldInstructionAync((YieldInstruction)coroutine.Current);
-            }
+            var currentYieldInstruction
+                = coroutine.Current == null
+                ? new WaitForEndOfFrame()
+                : (YieldInstruction)coroutine.Current;
+            await monoBehavior.ExecuteYieldInstructionAsync(currentYieldInstruction);
         }
     }
 
@@ -29,7 +28,7 @@ public static class CoroutineAwaiter
     /// <param name="monoBehavior">The Mono Behavior that managing coroutines</param>
     /// <param name="yieldInstruction"></param>
     /// <returns>Task that can be await</returns>
-    public static async Task ExecuteYieldInstructionAync(this MonoBehaviour monoBehavior, YieldInstruction yieldInstruction)
+    public static async Task ExecuteYieldInstructionAsync(this MonoBehaviour monoBehavior, YieldInstruction yieldInstruction)
     {
         var tcs = new TaskCompletionSource<object>();
         monoBehavior
